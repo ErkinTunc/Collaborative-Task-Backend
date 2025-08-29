@@ -177,9 +177,3 @@ Classe utilisateur par défaut :
   "image": *.png // généralement au format .png ou autre | Dossier "pictures"
 }
 ```
-
----
-
-## Répertoire Git
-Pour accéder au répertoire, [cliquez ici](https://github.com/ErkinTunc/App-Web-Gestion-De-taches)
-
