@@ -1,179 +1,140 @@
-# Application Web de Gestion de Tâches
+# Task Manager
 
-> **Développeurs** : Erkin Tunc BOYA, Mohamed SAIDANE 
-> **Technologies** : Python Django, Bootstrap
+**Multi-User Collaborative Backend (Django)**
 
----
+A backend-oriented system exploring object-level authorization, relational modeling, and multi-user domain design.
 
-## Description
-
-C'est une application web multi-utilisateur permettant la gestion de tâches.  
-L'application est construite avec Django et utilise Bootstrap pour le style.
+This project focuses on reasoning about _who can see, modify, and delete what_ in a collaborative environment.
 
 ---
 
-## Comment démarrer
+## System Motivation
 
-1. **Cloner le projet**
+Many collaborative systems appear simple at the interface level but become complex when enforcing:
+
+- Visibility rules
+- Ownership semantics
+- Multi-entity assignment
+- Hierarchical relationships
+- Consistent permission enforcement
+
+This project models those challenges explicitly.
+
+### Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Language | Python 3.x |
+| Framework | Django 5.x |
+| Database | SQLite (dev) / PostgreSQL (prod-ready) |
+| UI | Bootstrap (server-rendered templates) |
+
+
+---
+
+## Core Technical Challenges
+
+- Designing object-level visibility rules across:
+  - Public tasks
+  - Direct user assignments
+  - Team-based propagation
+- Modeling directed subtask graphs using self-referencing relations
+- Separating authentication from business logic
+- Enforcing permissions without hidden abstractions
+- Maintaining relational integrity via lifecycle signals
+
+The emphasis is correctness and reasoning — not UI complexity.
+
+---
+
+## Architectural Decisions
+
+App Separation:
+
+```bash
+users/ → Authentication & profile domain
+tasks/ → Business domain (Task, Team, permission logic)
+```
+
+Key decisions:
+
+- View-level authorization (explicit request boundary control)
+- Directed self-referencing ManyToMany for task hierarchies
+- Explicit creator vs collaborator distinction
+- Minimal use of signals (only lifecycle consistency)
+- Server-rendered design (no DRF abstraction layer)
+
+Trade-offs are documented in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## Engineering Focus
+
+This project demonstrates:
+
+- Domain modeling with complex associations
+- Object-level access control
+- Directed graph modeling in relational databases
+- Explicit trade-off reasoning
+- Awareness of production concerns (security, scaling, testing)
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Data Model](docs/DATA_MODEL.md)
+- [Permission Model](docs/PERMISSIONS.md)
+- [Security Review](docs/SECURITY.md)
+- [Testing Strategy](docs/TESTING.md)
+- [Course Context](docs/COURSE_CONTEXT.md)
+
+---
+
+## Running the Project Locally
+
+1. **Clone the project**
+
 ```bash
 git clone <repo-url>
 cd App-Web-Gestion-De-taches
 ```
 
-2. **Créer un environnement virtuel**  
-Chaque ordinateur doit avoir son propre environnement virtuel (non partagé via Git).
+1. **Create a virtual environment**  
+   Each computer must have its own virtual environment (not shared via Git).
+
 ```bash
-python -m venv tp-env
+Remove-Item -Recurse -Force .\venv
+python -m venv venv
 ```
 
-3. **Activer l’environnement virtuel**
+3. **Activate the virtual environment**
+
 ```bash
 # UNIX
-source tp-env/bin/activate
-# Windows
-tp-env\Scripts\activate
+source venv/bin/activate
+
+# Windows (PowerShell)
+.\venv\bin\Activate.ps1
 ```
 
-4. **Installer les dépendances**
+4. **Install dependencies**
+
 ```bash
-# Installer Django
+# Install Django
 python -m pip install Django
-# Installer les dépendances (pour la gestion d’images)
-pip install Pillow 
+
+# Install dependencies (for image handling)
+pip install Pillow
 ```
 
-5. **Lancer le serveur**
+5. **Run the server**
+
 ```bash
 python manage.py runserver
 ```
 
 ---
 
-## Fonctionnalités
+## Authors
 
-- **Authentification** : chaque utilisateur doit se connecter ou s’inscrire pour accéder au site. S'ils essaient, ils seront redirigés vers la page de connexion.
-
-### Fonctionnalités des Tâches
-
-- Une tâche comporte un titre, un statut, une description, une liste de sous-tâches, une liste de personnes et une liste d'équipes associées.
-- Une tâche peut être privée (visible uniquement par les personnes/équipes associées) ou publique.
-- L'utilisateur peut créer (seules les personnes travaillant sur cette tâche et le créateur peuvent), modifier et (seul le créateur d'une tâche peut) supprimer une tâche.
-- Lorsqu'une tâche est supprimée, tous ses liens avec les équipes et les personnes sont automatiquement supprimés.
-
-### Fonctionnalités des Équipes
-
-- Une équipe a un nom et une liste de personnes.
-- Un utilisateur peut créer, entrer, quitter (s'il est dans l'équipe), modifier et supprimer une équipe.
-- Lorsqu'une équipe est supprimée, tous ses liens avec les tâches et les personnes sont automatiquement supprimés.
-
-### Fonctionnalités des Utilisateurs
-
-- Un utilisateur a un nom, un e-mail, une description, un mot de passe et une image.
-- Un utilisateur peut consulter le profil d’un autre utilisateur/équipe, ainsi que les tâches publiques qui lui sont attribuées.
-- Un utilisateur peut modifier et supprimer son profil (ainsi que le super utilisateur).
-- Un super user peut créer un utilisateur
-- Lorsqu’un utilisateur est supprimé, toutes ses relations avec les tâches et les équipes sont automatiquement supprimées.
-
----
-
-## Structure de projet
-
-```bash
-├── README.md
-├── db.sqlite3
-├── manage.py
-├── pictures
-│     └── profile_pictures
-│     └── favicon
-├── task_manager # la coeur d'application
-├── tasks # App contenant tous les modèles de User,Team et Task
-├── tp-env # l’environnement virtuel
-└── users # App utilisée pour l'authentification
-```
-
----
-
-## Routes API
-
-### Page d’accueil
-- `GET /` – Affiche toutes les tâches public et les tache d'utilisateur
-- `GET /control-panel/` - C'est le panel de control pour le superuser. Cela affiche tous le taches,equipes et utilisateur.
-
-### Authentification
-- `POST /register` – Créer un compte
-- `POST /login` – Se connecter
-- `POST /logout` – Se déconnecter
-
-### Utilisateur
-- `GET /users/:id` – Voir le profil d’un utilisateur, ses tâches et ses équipes
-- `POST /users/add/` – Créer un utilisateur
-- `POST /users/update/:id` – Mettre à jour le profil
-- `POST /users/delete/:id` – Supprimer un utilisateur
-
-### Équipe
-- `GET /teams/:id` – Voir le profil d’une équipe
-- `POST /teams/add` – Créer une équipe
-- `POST /teams/update/:id` – Mettre à jour une équipe
-- `POST /teams/delete/:id` – Supprimer une équipe
-- `POST /teams/:id/enter/:user-id` – Rejoindre une équipe
-- `POST /teams/:id/leave/:user-id` – Quitter une équipe
-
-### Tâche
-- `GET /tasks/:id` – Voir une tâche
-- `POST /tasks/add` – Créer une tâche
-- `POST /tasks/update/:id` – Mettre à jour une tâche
-- `POST /tasks/delete/:id` – Supprimer une tâche
-- `POST tasks/:id/add-sub-task` – Créer et Assigner une sous-tache
-- `POST tasks/:id/add-sub-team` – Créer et Assigner une équipe
-
----
-
-## Modèles (Entities)
-
-### Task
-```bash
-{
-  "private": boolean,
-  "creator": User,
-
-  "title": string,
-  "status": "todo" || "in_progress" || "done",
-  "description": string,
-
-  "users": [User],    // Le list de Users qui travailent sur cela
-  "teams": [Team],    // Le list de Teams 
-  "subtasks": [Task], // Le sub-tasks de cette Task
-
-  "created_at": Date,
-  "updated_at": Date, 
-  "deadline": Date
-}
-```
-
-### Team
-```bash
-{
-  "name": string,
-  "users": [User]
-}
-```
-
-### User
-Classe utilisateur par défaut :
-```bash
-{
-  "id": int,
-  "name": string,
-  "email": string,
-  "password": string
-}
-```
-
-### UserProfile
-```bash
-{
-  "user": User, // Relation un-à-un
-  "description": string,
-  "image": *.png // généralement au format .png ou autre | Dossier "pictures"
-}
-```
+- [Erkin Tunc BOYA](https://github.com/ErkinTunc)
+- [Mohamed SAIDANE](https://github.com/Tounes-3220)
