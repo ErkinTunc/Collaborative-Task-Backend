@@ -1,4 +1,4 @@
-# Task Manager
+# Collaborative Task Backend
 
 **Multi-User Collaborative Backend (Django)**
 
@@ -138,3 +138,4 @@ python manage.py runserver
 
 - [Erkin Tunc BOYA](https://github.com/ErkinTunc)
 - [Mohamed SAIDANE](https://github.com/Tounes-3220)
+
