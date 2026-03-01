@@ -81,6 +81,7 @@ This project demonstrates:
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [API Specification](docs/API.md)
 - [Data Model](docs/DATA_MODEL.md)
 - [Permission Model](docs/PERMISSIONS.md)
 - [Security Review](docs/SECURITY.md)
@@ -138,4 +139,5 @@ python manage.py runserver
 
 - [Erkin Tunc BOYA](https://github.com/ErkinTunc)
 - [Mohamed SAIDANE](https://github.com/Tounes-3220)
+
 
