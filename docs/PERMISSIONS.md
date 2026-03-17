@@ -173,16 +173,3 @@ Enforced in `delete_user`.
 
 Deletion removes the Django `User` instance.
 
----
-
-## Summary
-
-Permissions in this project are:
-
-- Explicit
-- View-level
-- Condition-based
-- Superuser-aware
-
-There is no centralized permission system.
-All authorization logic is visible directly in the view functions.
