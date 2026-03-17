@@ -53,18 +53,6 @@ This repository goes beyond the minimum academic requirements by:
 2. Formalizing object-level authorization rules
 3. Modeling directed subtask relationships
 4. Implementing lifecycle cleanup using Django signals
-5. Documenting architectural trade-offs
-6. Documenting security limitations
-7. Documenting future extension paths
-8. Structuring documentation into modular `/docs/` sections
-
-The goal shifted from:
-
-> “Deliver a working assignment”
-
-to:
-
-> “Design a system with explicit architectural reasoning.”
 
 ---
 
