@@ -72,7 +72,7 @@ Reason: in a server-rendered Django app, the view is the request boundary, so pe
 
 ---
 
-## Why No Service Layer / Why No DRF (Scope Decision)
+## Why No Service Layer / Why No DRF 
 
 I kept the architecture minimal because:
 
