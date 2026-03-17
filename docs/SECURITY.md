@@ -70,16 +70,3 @@ No passwords are stored or handled manually.
 Superusers bypass object-level restrictions.
 
 This enables administrative control without modifying domain rules.
-
----
-
-## Summary
-
-Security in this project is primarily enforced through:
-
-- Mandatory authentication
-- Explicit object-level authorization checks
-- CSRF-protected POST operations
-- Django’s built-in password hashing system
-
-The focus is on correct permission enforcement rather than production hardening.
