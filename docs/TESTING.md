@@ -93,44 +93,6 @@ Test cases:
 Why it matters:
 - ensures consistent database state even if deletion occurs from admin panel or shell.
 
----
-
-## 2. How To Implement (Django Approach)
-
-Recommended tools:
-
-- `django.test.TestCase`
-- Django test client (`self.client`)
-- Fixtures created in `setUp()`
-
-Common pattern:
-
-1. Create users: creator / collaborator / outsider / superuser
-2. Create team and attach users
-3. Create tasks:
-   - public task
-   - private task assigned to user
-   - private task assigned to team
-4. Use `self.client.force_login(user)`
-5. Perform GET/POST to the view
-6. Assert:
-   - HTTP status / redirect behavior
-   - database objects count unchanged/changed
-   - relations exist/removed
-
----
-
-## 3. Suggested Test File Organization
-
-- `tasks/tests/test_visibility.py`
-- `tasks/tests/test_permissions.py`
-- `tasks/tests/test_signals.py`
-- `users/tests/test_auth_flow.py`
-
-This keeps tests grouped by system risk, not by model.
-
----
-
 ## 4. Current Status
 
 At the moment, automated tests are not implemented.
