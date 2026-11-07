@@ -1,62 +1,116 @@
 {% extends 'base.html' %} {% block body %}
 
-<div class="container "> <!--mt-4 margin -->
-  <div class="row">
-    <section class="col-md-4 mt-4">
-      <h4>{{ current_user.username }}'s Tasks :</h4>
+<div class="dashboard">
+  <!-- Page heading -->
+  <div
+    class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3"
+  >
+    <div>
+      <h1>Welcome, {{ current_user.username }}</h1>
+      <p class="page-subtitle">
+        Manage your tasks and collaborate with your team.
+      </p>
+    </div>
 
-      <ul class="list-group">
-        {% for task in users_task_list %}
-
-        <a
-          href="{% url 'task:detail_task' task.id %}"
-          class="list-group-item list-group-item-action"
-          >ID: {{ task.id }} -- {{ task.title }} -- {{task.status}}</a
-        >
-
-        {% empty %}
-        <p>You {{ current_user.username }} have no tasks</p>
-        {% endfor %}
-      </ul>
-    </section>
-
-    <section class="col-md-4 mt-4">
-      <h4>{{ current_user.username }}'s Teams :</h4>
-      <ul class="list-group">
-        {% for team in users_team %}
-
-        <a
-          href="{% url 'task:detail_team' team.id %}"
-          class="list-group-item list-group-item-action"
-        >
-          ID: {{ team.id }} -- {{ team.name }}</a
-        >
-
-        {% empty %}
-        <p>You {{ current_user.username }} are not part of any teams</p>
-        {% endfor %}
-      </ul>
-    </section>
+    <a href="{% url 'task:create_task' %}" class="btn btn-primary">
+      + New Task
+    </a>
   </div>
 
-  <div class="row">
-    <section class="col-md-4 mt-4">
-      <h4>Public Tasks :</h4>
-      <ul class="list-group">
-        {% for task in public_task_list %}
+  <div class="row g-4">
+    <!-- My Tasks -->
+    <div class="col-lg-6">
+      <div class="card section-card">
+        <div class="card-header">
+          <h2>My Tasks</h2>
+        </div>
 
-        <a
-          href="{% url 'task:detail_task' task.id %}"
-          class="list-group-item list-group-item-action"
-        >
-          ID: {{ task.id }} -- {{ task.title }} -- {{task.status}}
-        </a>
+        <div class="list-group list-group-flush">
+          {% for task in users_task_list %}
 
-        {% empty %}
-        <p>There are no tasks avaible.</p>
-        {% endfor %}
-      </ul>
-    </section>
+          <a
+            href="{% url 'task:detail_task' task.id %}"
+            class="list-group-item list-group-item-action"
+          >
+            <div
+              class="d-flex justify-content-between align-items-center gap-2"
+            >
+              <span class="fw-medium"> {{ task.title }} </span>
+
+              <span
+                class="status-pill
+                                         status-{{ task.status }}"
+              >
+                {{ task.get_status_display }}
+              </span>
+            </div>
+          </a>
+
+          {% empty %}
+          <div class="empty-state">You have no assigned tasks yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- My Teams -->
+    <div class="col-lg-6">
+      <div class="card section-card">
+        <div class="card-header">
+          <h2>My Teams</h2>
+        </div>
+
+        <div class="list-group list-group-flush">
+          {% for team in users_team %}
+
+          <a
+            href="{% url 'task:detail_team' team.id %}"
+            class="list-group-item list-group-item-action"
+          >
+            {{ team.name }}
+          </a>
+
+          {% empty %}
+          <div class="empty-state">You are not a member of any team yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Public Tasks -->
+    <div class="col-12">
+      <div class="card section-card">
+        <div class="card-header">
+          <h2>Public Tasks</h2>
+        </div>
+
+        <div class="list-group list-group-flush">
+          {% for task in public_task_list %}
+
+          <a
+            href="{% url 'task:detail_task' task.id %}"
+            class="list-group-item list-group-item-action"
+          >
+            <div
+              class="d-flex justify-content-between align-items-center gap-2"
+            >
+              <span>{{ task.title }}</span>
+
+              <span
+                class="status-pill
+                                         status-{{ task.status }}"
+              >
+                {{ task.get_status_display }}
+              </span>
+            </div>
+          </a>
+
+          {% empty %}
+          <div class="empty-state">No public tasks available.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

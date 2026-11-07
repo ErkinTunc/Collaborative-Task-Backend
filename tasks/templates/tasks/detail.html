@@ -1,122 +1,186 @@
 {% extends 'base.html' %} {% block body %}
-<div class="container my-5">
-  <div class="card shadow-sm p-4">
-    <!-- Title and Status -->
-    <h1>{{ task.title }}</h1>
 
-    <hr />
-
-    <section>
-      <h2>Status: {{ task.status }}</h2>
-
-      {% if task.description %}
-      <p><strong>Description:</strong> {{ task.description }}</p>
-      {% endif %}
-    </section>
-
-    <hr />
-
-    <!-- Assigned users list -->
-    <section>
-      <h3>Assigned Users:</h3>
-
-      <ul class="mb-3 rowList">
-        {% for user in task.users.all %}
-
-        <a
-          href="{% url 'task:detail_user' user.id %}"
-          class="btn btn-outline-primary me-2 mb-2"
-        >
-          {{ user.username }} (ID: {{ user.id }})
-        </a>
-
-        {% empty %}
-        <li class="list-group-item text-muted">No users assigned.</li>
-        {% endfor %}
-      </ul>
-    </section>
-
-    <!-- Related teams list -->
-    <section>
-      <h3>Related Teams:</h3>
-      <ul class="mb-3 rowList">
-        {% for team in task.teams.all %}
-
-        <a
-          href="{% url 'task:detail_team' team.id %}"
-          class="btn btn-outline-primary me-2 mb-2"
-          >{{ team.name }}</a
-        >
-
-        {% empty %}
-        <li class="list-group-item text-muted">No teams assigned.</li>
-        {% endfor %}
-      </ul>
-    </section>
-
-    <!-- Subtask list -->
-    <section>
-      <h3>Subtasks:</h3>
-      <ul class="mb-1 rowList">
-        {% for subtask in task.subtasks.all %}
-
-        <a
-          href="{% url 'task:detail_task' subtask.id %}"
-          class="btn btn-outline-primary me-2 mb-2"
-          >{{ subtask.title }}</a
-        >
-
-        {% empty %}
-        <li class="list-group-item text-muted">No subtasks.</li>
-        {% endfor %}
-      </ul>
-    </section>
-
-    <hr />
-
-    <!-- Meta data -->
-    <section class="text-muted">
-      <p><strong>Created at:</strong> {{ task.created_at }}</p>
-      <p><strong>Last updated:</strong> {{ task.updated_at }}</p>
-
-      {% if task.deadline %}
-      <p><strong>Deadline:</strong> {{ task.deadline }}</p>
-      {% endif %}
-    </section>
-
-    <hr />
-
-    <!-- Buttons -->
-    <section>
-      <!-- Create sub-team -->
-      <form
-        action="{% url 'task:create_sub_team' task.id %}"
-        method="POST"
-        class="d-inline"
-      >
-        {% csrf_token %}
-        <button type="submit" class="btn btn-success">Create Task-Team</button>
-      </form>
-      <!-- Create Sub-Task -->
-      <form
-        action="{% url 'task:create_sub_task' task.id %}"
-        method="POST"
-        class="d-inline"
-      >
-        {% csrf_token %}
-        <button type="submit" class="btn btn-success">Create Sub-Task</button>
-      </form>
-      <!-- Update  -->
+<div class="container py-4 py-md-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-10">
+      <!-- Back navigation -->
       <a
-        href="{% url 'task:update_task' task.id %}"
-        class="btn btn-warning me-2"
-        >Update</a
+        href="{% url 'task:index' %}"
+        class="text-decoration-none d-inline-block mb-4"
       >
-      <!-- Delete -->
-      <a href="{% url 'task:delete_task' task.id %}" class="btn btn-danger"
-        >Delete</a
-      >
-    </section>
+        &larr; Back to Dashboard
+      </a>
+
+      <div class="card shadow-sm">
+        <div class="card-body p-4 p-md-5">
+          <!-- Task header -->
+          <div
+            class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4"
+          >
+            <div>
+              <h1 class="h3 mb-2">{{ task.title }}</h1>
+
+              {% if task.private %}
+              <span class="badge bg-secondary"> Private </span>
+              {% else %}
+              <span class="badge bg-light text-dark border"> Public </span>
+              {% endif %}
+            </div>
+
+            <span class="status-pill status-{{ task.status }}">
+              {{ task.get_status_display }}
+            </span>
+          </div>
+
+          <hr />
+
+          <!-- Description -->
+          <section class="my-4">
+            <h2 class="h5 mb-3">Description</h2>
+
+            {% if task.description %}
+            <p class="text-secondary mb-0">
+              {{ task.description|linebreaksbr }}
+            </p>
+            {% else %}
+            <p class="text-muted mb-0">No description provided.</p>
+            {% endif %}
+          </section>
+
+          <hr />
+
+          <div class="row g-4 my-1">
+            <!-- Assigned Users -->
+            <div class="col-md-6">
+              <h2 class="h5 mb-3">Assigned Users</h2>
+
+              <div class="d-flex flex-wrap gap-2">
+                {% for user in task.users.all %}
+
+                <a
+                  href="{% url 'task:detail_user' user.userprofile.id %}"
+                  class="btn btn-outline-secondary btn-sm"
+                >
+                  {{ user.username }}
+                </a>
+
+                {% empty %}
+                <p class="text-muted small">No users assigned.</p>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Related Teams -->
+            <div class="col-md-6">
+              <h2 class="h5 mb-3">Related Teams</h2>
+
+              <div class="d-flex flex-wrap gap-2">
+                {% for team in task.teams.all %}
+
+                <a
+                  href="{% url 'task:detail_team' team.id %}"
+                  class="btn btn-outline-secondary btn-sm"
+                >
+                  {{ team.name }}
+                </a>
+
+                {% empty %}
+                <p class="text-muted small">No teams assigned.</p>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <hr />
+
+          <!-- Subtasks -->
+          <section class="my-4">
+            <h2 class="h5 mb-3">Subtasks</h2>
+
+            <div class="list-group">
+              {% for subtask in task.subtasks.all %}
+
+              <a
+                href="{% url 'task:detail_task' subtask.id %}"
+                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2"
+              >
+                <span>{{ subtask.title }}</span>
+
+                <span class="status-pill status-{{ subtask.status }}">
+                  {{ subtask.get_status_display }}
+                </span>
+              </a>
+
+              {% empty %}
+              <p class="text-muted small">No subtasks created yet.</p>
+              {% endfor %}
+            </div>
+          </section>
+
+          <hr />
+
+          <!-- Task information -->
+          <section class="my-4">
+            <h2 class="h5 mb-3">Task Information</h2>
+
+            <div class="row g-3 text-secondary small">
+              <div class="col-sm-6">
+                <strong>Created</strong>
+                <div>{{ task.created_at|date:"d M Y" }}</div>
+              </div>
+
+              <div class="col-sm-6">
+                <strong>Last Updated</strong>
+                <div>{{ task.updated_at|date:"d M Y" }}</div>
+              </div>
+
+              {% if task.deadline %}
+              <div class="col-sm-6">
+                <strong>Deadline</strong>
+                <div>{{ task.deadline|date:"d M Y, H:i" }}</div>
+              </div>
+              {% endif %}
+            </div>
+          </section>
+
+          <hr />
+
+          <!-- Actions -->
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <a
+              href="{% url 'task:update_task' task.id %}"
+              class="btn btn-primary"
+            >
+              Edit Task
+            </a>
+
+            <a
+              href="{% url 'task:create_sub_task' task.id %}"
+              class="btn btn-outline-primary"
+            >
+              + Add Subtask
+            </a>
+
+            <a
+              href="{% url 'task:create_sub_team' task.id %}"
+              class="btn btn-outline-secondary"
+            >
+              + Add Team
+            </a>
+
+            {% if request.user == task.creator or request.user.is_superuser %}
+            <a
+              href="{% url 'task:delete_task' task.id %}"
+              class="btn btn-outline-danger ms-md-auto"
+            >
+              Delete Task
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+
 {% endblock %}
