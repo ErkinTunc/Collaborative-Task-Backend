@@ -50,12 +50,33 @@ class TeamForm(forms.ModelForm):
                 
             }
 
+
 class TaskForm(forms.ModelForm):
-        users = forms.ModelMultipleChoiceField(queryset=User.objects.all(),widget=forms.CheckboxSelectMultiple,required=False)
-        teams = forms.ModelMultipleChoiceField(queryset=Team.objects.all(),widget=forms.CheckboxSelectMultiple,required=False)
-        subtasks = forms.ModelMultipleChoiceField(queryset=Task.objects.all(),widget=forms.CheckboxSelectMultiple,required=False)
-        class Meta: # a meta class which will hold the data
-            model = Task
-            fields = ["title","private","status","deadline","description","users","teams","subtasks",]
-            widgets = {
-            'deadline': DateTimeInput(attrs={'type': 'datetime-local','class': 'form-control','placeholder': 'YYYY-MM-DD HH:MM'}),}
+    users = forms.ModelMultipleChoiceField(
+        queryset=User.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
+
+    teams = forms.ModelMultipleChoiceField(
+        queryset=Team.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
+
+    class Meta:
+        model = Task
+
+        fields = [
+            "title","private","status","deadline",
+            "description","users","teams",
+        ]
+
+        widgets = {
+            "deadline": DateTimeInput(
+                attrs={
+                    "type": "datetime-local",
+                    "class": "form-control",
+                }
+            )
+        }
