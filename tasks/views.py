@@ -263,18 +263,26 @@ def update_user(request, id):  # TODO: Should make it right it is creating new u
 
 @login_required
 def update_team(request, id):
-    team = Team.objects.get(id=id)
+    team = get_object_or_404(Team, pk=id)
+
+    if not (
+        request.user.is_superuser
+        or team.users.filter(pk=request.user.pk).exists()
+    ):
+        raise PermissionDenied
+
     form = TeamForm(request.POST or None, instance=team)
 
-    
-    if (request.user  not in team.users.all()) and not request.user.is_superuser: # you shall not pass (unless y are superuser or in the team)
-        return HttpResponse("You are not authorized to update this profile.")
-
-    if form.is_valid():
+    if request.method == "POST" and form.is_valid():
         form.save()
         return redirect("task:index")
 
-    return render(request, 'teams/team-form.html', {'form': form, 'team': team})
+    return render(
+        request,
+        "teams/team-form.html",
+        {"form": form, "team": team}
+    )
+
 
 @login_required
 def update_task(request, id):

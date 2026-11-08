@@ -186,3 +186,66 @@ class TaskDeletionPermissionTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+# ----------------- Team Update Permission Tets ---------------------------
+
+class TeamUpdatePermissionTests(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.member = User.objects.create_user(username="member")
+        cls.outsider = User.objects.create_user(username="outsider")
+
+        cls.team = Team.objects.create(name="Original Team")
+        cls.team.users.add(cls.member)
+
+    def test_outsider_cannot_update_team(self):
+        self.client.force_login(self.outsider)
+
+        url = reverse("task:update_team", args=[self.team.pk])
+
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+        response = self.client.post(url, {
+            "name": "Hacked Team",
+            "users": [self.outsider.pk],
+        })
+
+        self.team.refresh_from_db()
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.team.name, "Original Team")
+        self.assertFalse(
+            self.team.users.filter(pk=self.outsider.pk).exists()
+        )
+
+    def test_member_can_update_team(self):
+        self.client.force_login(self.member)
+
+        response = self.client.post(
+            reverse("task:update_team", args=[self.team.pk]),
+            {
+                "name": "Updated Team",
+                "users": [self.member.pk, self.outsider.pk],
+            }
+        )
+
+        self.team.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.team.name, "Updated Team")
+        self.assertTrue(
+            self.team.users.filter(pk=self.member.pk).exists()
+        )
+        self.assertTrue(
+            self.team.users.filter(pk=self.outsider.pk).exists()
+        )
+
+    def test_missing_team_returns_404(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(
+            reverse("task:update_team", args=[999999])
+        )
+
+        self.assertEqual(response.status_code, 404)
