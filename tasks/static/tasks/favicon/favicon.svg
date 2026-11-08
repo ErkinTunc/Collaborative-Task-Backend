@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="TeamForge logo">
+  <rect width="64" height="64" rx="14" fill="#17263F"/>
+  <rect x="12" y="13" width="29" height="29" rx="6" fill="none" stroke="#88A9EF" stroke-width="4"/>
+  <rect x="23" y="23" width="29" height="29" rx="6" fill="#315CAA" stroke="#FFFFFF" stroke-width="3"/>
+  <path d="M30 37 L35 42 L45 31" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
