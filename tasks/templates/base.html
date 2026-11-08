@@ -5,33 +5,48 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    {% load static %}
+
     <!-- Favicon -->
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="/pictures/favicon/apple-touch-icon.png"
+      href="{% static 'tasks/favicon/apple-touch-icon.png' %}"
+    />
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="{% static 'tasks/favicon/favicon.ico' %}"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="/pictures/favicon/favicon-32x32.png"
+      href="{% static 'tasks/favicon/favicon-32x32.png' %}"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="/pictures/favicon/favicon-16x16.png"
+      href="{% static 'tasks/favicon/favicon-16x16.png' %}"
     />
-    <link rel="manifest" href="/pictures/favicon/site.webmanifest" />
 
-    <!--Google Font-->
+    <!-- Google Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap"
       rel="stylesheet"
     />
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'tasks/styles.css' %}" />
 
     <!-- CSS -->
     <link
@@ -110,13 +125,19 @@
       <ul>
         <li class="linkedin-icon">
           <a href="https://www.linkedin.com/in/erkin-tunc-boya/">
-            <img src="/pictures/icons/linkedIn.png" alt="LinkedIn profile" />
+            <img
+              src="{% static 'tasks/icons/linkedIn.png' %}"
+              alt="LinkedIn profile"
+            />
           </a>
         </li>
 
         <li>
           <a href="https://github.com/ErkinTunc/Collaborative-Task-Backend">
-            <img src="/pictures/icons/github.png" alt="GitHub repository" />
+            <img
+              src="{% static 'tasks/icons/github.png' %}"
+              alt="GitHub repository"
+            />
           </a>
         </li>
       </ul>
