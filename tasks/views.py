@@ -335,17 +335,19 @@ def delete_team(request, id):
 
 @login_required
 def delete_task(request, id):
-    task = Task.objects.get(id=id)
-    
-    if (request.user != task.creator) and not request.user.is_superuser: # you shall not pass (unless y are superuser or in the team)
-        return HttpResponse("You are not authorized to delete this. Only the creator of this task can delete it")
+    task = get_object_or_404(
+        visible_tasks_for(request.user),
+        pk=id
+    )
 
+    if task.creator_id != request.user.pk and not request.user.is_superuser:
+        raise PermissionDenied
 
-    if request.method == 'POST':
+    if request.method == "POST":
         task.delete()
-        return redirect('task:index')
+        return redirect("task:index")
 
-    return render(request, 'tasks/task-delete.html', {'task': task})
+    return render(request, "tasks/task-delete.html", {"task": task})
 
 # ================= Enter ==========================
 @login_required

@@ -4,6 +4,7 @@ from django.urls import reverse
 
 from .models import Task, Team
 
+# ----------------- Task Team Authorization Tets ---------------------------
 
 class TaskTeamAuthorizationTests(TestCase):
 
@@ -92,3 +93,96 @@ class TaskTeamAuthorizationTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(task.title, "Updated title")
         self.assertTrue(task.teams.filter(pk=team.pk).exists())
+
+# ----------------- Task Deletion Permission Tets ---------------------------
+
+class TaskDeletionPermissionTests(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.creator = User.objects.create_user(username="creator")
+        cls.collaborator = User.objects.create_user(username="collaborator")
+        cls.outsider = User.objects.create_user(username="outsider")
+
+        cls.public_task = Task.objects.create(
+            title="Public Task",
+            creator=cls.creator,
+            private=False
+        )
+        cls.public_task.users.add(cls.collaborator)
+
+        cls.private_task = Task.objects.create(
+            title="Private Task",
+            creator=cls.creator,
+            private=True
+        )
+
+    def test_outsider_cannot_delete_public_task(self):
+        self.client.force_login(self.outsider)
+
+        response = self.client.post(
+            reverse("task:delete_task", args=[self.public_task.pk])
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(
+            Task.objects.filter(pk=self.public_task.pk).exists()
+        )
+
+    def test_collaborator_cannot_delete_task(self):
+        self.client.force_login(self.collaborator)
+
+        response = self.client.post(
+            reverse("task:delete_task", args=[self.public_task.pk])
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(
+            Task.objects.filter(pk=self.public_task.pk).exists()
+        )
+
+    def test_private_task_hidden_from_outsider(self):
+        self.client.force_login(self.outsider)
+
+        url = reverse(
+            "task:delete_task",
+            args=[self.private_task.pk]
+        )
+
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.post(url).status_code, 404)
+
+        self.assertTrue(
+            Task.objects.filter(pk=self.private_task.pk).exists()
+        )
+
+    def test_creator_can_delete_task_only_via_post(self):
+        self.client.force_login(self.creator)
+
+        url = reverse(
+            "task:delete_task",
+            args=[self.public_task.pk]
+        )
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertTrue(
+            Task.objects.filter(pk=self.public_task.pk).exists()
+        )
+
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 302)
+
+        self.assertFalse(
+            Task.objects.filter(pk=self.public_task.pk).exists()
+        )
+
+    def test_missing_task_returns_404(self):
+        self.client.force_login(self.creator)
+
+        response = self.client.post(
+            reverse("task:delete_task", args=[999999])
+        )
+
+        self.assertEqual(response.status_code, 404)
