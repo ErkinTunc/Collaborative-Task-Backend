@@ -249,3 +249,69 @@ class TeamUpdatePermissionTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+# ----------------- Team Deletition Permission Tets ---------------------------
+
+class TeamDeletionPermissionTests(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.member = User.objects.create_user(username="member")
+        cls.outsider = User.objects.create_user(username="outsider")
+        cls.admin = User.objects.create_superuser(
+            username="admin",
+            password="test-password-123"
+        )
+
+        cls.team = Team.objects.create(name="Test Team")
+        cls.team.users.add(cls.member)
+
+    def test_outsider_cannot_delete_team(self):
+        self.client.force_login(self.outsider)
+
+        url = reverse("task:delete_team", args=[self.team.pk])
+
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertEqual(self.client.post(url).status_code, 403)
+
+        self.assertTrue(
+            Team.objects.filter(pk=self.team.pk).exists()
+        )
+
+    def test_member_can_delete_team_only_via_post(self):
+        self.client.force_login(self.member)
+
+        url = reverse("task:delete_team", args=[self.team.pk])
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            Team.objects.filter(pk=self.team.pk).exists()
+        )
+
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            Team.objects.filter(pk=self.team.pk).exists()
+        )
+
+    def test_superuser_can_delete_team(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("task:delete_team", args=[self.team.pk])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            Team.objects.filter(pk=self.team.pk).exists()
+        )
+
+    def test_missing_team_returns_404(self):
+        self.client.force_login(self.member)
+
+        response = self.client.post(
+            reverse("task:delete_team", args=[999999])
+        )
+
+        self.assertEqual(response.status_code, 404)
