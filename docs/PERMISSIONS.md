@@ -97,18 +97,23 @@ This logic is enforced in `delete_task`.
 
 ## 4. Team Permissions
 
+The application follows an **equal-permission team membership model**. There is no separate team owner or team administrator role.
+
 ### Team Creation
 
 - Any authenticated user can create a team.
+- The creator is automatically added as a team member.
 
 ---
 
 ### Team Update
 
-A team can be updated if the user is:
+A team can be updated by:
 
-- A member of that team
-- OR a superuser
+- Any member of that team
+- A superuser
+
+Authorized users can change the team name and manage its members.
 
 Enforced in `update_team`.
 
@@ -116,22 +121,46 @@ Enforced in `update_team`.
 
 ### Team Deletion
 
-A team can be deleted if the user is:
+A team can be deleted by:
 
-- A member of that team
-- OR a superuser
+- Any member of that team
+- A superuser
+
+Deletion requires a POST request. A GET request only displays the confirmation page.
 
 Enforced in `delete_team`.
 
 ---
 
-### Join / Leave Team
+### Team Membership Management
 
-- Joining and leaving teams are done via POST routes.
-- The current implementation allows adding or removing a user from a team via the route parameters.
-- No additional restriction is enforced beyond authentication.
+**Adding users:**
 
-Enforced in `enter_team` and `leave_team`.
+- Any team member or superuser can add users to the team.
+- Users cannot join a team themselves unless they are already members or superusers.
+
+**Removing users:**
+
+- Any team member or superuser can remove other users.
+- Users can remove themselves from a team.
+
+Membership changes through `enter_team` and `leave_team` require POST requests.
+
+Team members and superusers can also manage membership through `update_team`.
+
+---
+
+### Security Trade-off
+
+Team membership grants access to private tasks assigned to that team. Members can also edit tasks assigned to their team.
+
+Because team members can add other users, they can extend access to these private tasks.
+
+This behavior is intentional for a **trusted, collaborative team model**.
+
+The application does not currently implement separate team owner or administrator roles. Therefore, every team member has permission to manage membership and delete the team.
+
+This design is suitable for a trusted collaborative environment, but it is not intended to enforce isolation between untrusted team members.
 
 ---
 
