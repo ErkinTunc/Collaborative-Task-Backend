@@ -1,204 +1,86 @@
-# Permissions Model
+# Permissions
 
-This document describes the authorization rules currently enforced in the application.
+This document describes what the **current Django views** permit. Authentication alone does not mean a user can edit or delete every object they can see.
 
-Permissions are implemented explicitly at the view level.
+## Task access
 
-There is no separate permission layer or service abstraction.
+| Action | Creator | Assigned user | Member of assigned team | Superuser | Other signed-in user |
+| --- | --- | --- | --- | --- | --- |
+| View public task | Yes | Yes | Yes | Yes | Yes |
+| View private task | Yes | Yes | Yes | Yes | No |
+| Edit task | Yes | Yes | Yes | Yes | No |
+| Delete task | Yes | No | No | Yes | No |
 
----
+The task's `creator` and the users in `task.users` are different fields. Being assigned to a task grants editing rights but **not** deletion rights.
 
-## 1. Authentication
+Task creation is allowed for any signed-in user. The creator is set on the server from `request.user`, not trusted from a form field.
 
-- Most routes are protected using `@login_required`.
-- Unauthenticated users are redirected to the login page.
-- Registration and login routes are accessible only to unauthenticated users.
+### Where the checks happen
 
----
+`tasks/permissions.py` contains:
 
-## 2. Superuser Privileges
+- `visible_tasks_for(user)` — public tasks plus tasks visible through creator, direct assignment, assigned-team membership or superuser rights.
+- `can_edit_task(user, task)` — creator, direct assignee, assigned-team member or superuser.
 
-A Django superuser can:
+`detail_task`, `update_task` and `delete_task` start from the visible-task queryset. Someone who cannot see a private task receives a **404**; someone who can see but cannot perform a protected operation generally receives a **403**.
 
-- Access the control panel
-- Create users
-- Update or delete any user
-- Update or delete any team
-- Update or delete any task
+The dashboard shows your own/assigned/team tasks and public tasks as separate lists; a task may appear in both.
 
-Superuser checks are performed using:
+### Assigning teams
 
-```bash
-request.user.is_superuser
-```
+`TaskForm` restricts a regular user's available teams:
 
----
+- On creation: teams they belong to.
+- On update: teams they belong to **or** teams already linked to that task, so existing assignments can be retained.
+- Superuser: all teams.
 
-## 3. Task Permissions
+This blocks a user from adding an unrelated team to a task by submitting a crafted team ID. Assigned **individual users**, however, are selected from all users in the current form; there is no same-team restriction on individual assignment.
 
-### Task Creation
+### Subtasks and attached teams
 
-- Any authenticated user can create a task.
-- The creator field is automatically set to the current user.
+A user who can edit the parent task may use its `add-sub-task` or `add-sub-team` page. A new child task has its own creator, privacy and assignments; it does **not** automatically inherit all of the parent task's access rules. The task detail page filters child links to those visible to the viewer.
 
----
+## Team access
 
-### Task Update
+Any signed-in user can view a team detail page. Its task list is filtered to tasks the viewer may see.
 
-A task can be updated if the user is:
+| Action | Who may do it? |
+| --- | --- |
+| Create a team | Any signed-in user; automatically becomes a member |
+| Rename/update a team | A member or superuser |
+| Delete a team | A member or superuser |
+| Add a user to a team | A member or superuser |
+| Remove another user | A member or superuser |
+| Leave a team oneself | That user |
 
-- The task creator
-- Directly assigned to the task
-- A member of a team assigned to the task
-- A superuser
+Membership updates through `/teams/<team_id>/enter/<user_id>/` and `/teams/<team_id>/leave/<user_id>/` require **POST**. The user ID in these URL patterns resolves a `UserProfile.pk`.
 
-This logic is enforced in `update_task`.
+### The deliberate trade-off
 
----
+There is no owner/admin role within a team. **Every member has equal management rights**, including the ability to add members and delete the team. Adding a member may also give them access to private tasks assigned to that team.
 
-### Subtask Creation
+That is a simple model for trusted collaborators. It is **not appropriate for teams of mutually untrusted users** without stronger role and invitation controls.
 
-A subtask can be created under a task if the user is:
+## Profiles and administration
 
-- The task creator
-- Directly assigned to the task
-- A member of a team assigned to the task
-- A superuser
+| Action | Access |
+| --- | --- |
+| View a user's profile | Any signed-in user; task list is visibility-filtered |
+| Edit profile | Profile owner or superuser |
+| Delete account | Account owner or superuser |
+| Create user through `/users/add` | Superuser |
+| Visit `/control-panel/` | Superuser |
 
-This logic is enforced in `create_sub_task`.
+Django authentication is required for the core pages. The `users` app handles registration and login; Django's built-in logout view handles logout.
 
----
+**Current inconsistency:** Some older profile/admin views respond to unauthorized requests with plain-text HTTP **200** instead of **403**. The operation is blocked, but the response code should be improved. Task and team permissions generally use `PermissionDenied` for 403.
 
-### Add Team to Task
+## Deletion rules
 
-A new team can be created and attached to a task if the user is:
+Task, team and profile deletion views show a confirmation page on **GET** and perform deletion on **POST**. Deleting a user also deletes tasks where they are the creator because the model uses `on_delete=CASCADE`.
 
-- The task creator
-- Directly assigned to the task
-- A member of a team assigned to the task
-- A superuser
+## Tests
 
-This logic is enforced in `create_sub_team`.
+There are 21 tests in `tasks/tests.py`, with strongest coverage around task-team form restrictions, task deletion, team edit/delete and membership changes. They do **not** provide full coverage of all the visibility and profile rules above.
 
----
-
-### Task Deletion
-
-A task can be deleted only if:
-
-- The user is the task creator
-- OR the user is a superuser
-
-Being an assigned collaborator is not sufficient.
-
-This logic is enforced in `delete_task`.
-
----
-
-## 4. Team Permissions
-
-The application follows an **equal-permission team membership model**. There is no separate team owner or team administrator role.
-
-### Team Creation
-
-- Any authenticated user can create a team.
-- The creator is automatically added as a team member.
-
----
-
-### Team Update
-
-A team can be updated by:
-
-- Any member of that team
-- A superuser
-
-Authorized users can change the team name and manage its members.
-
-Enforced in `update_team`.
-
----
-
-### Team Deletion
-
-A team can be deleted by:
-
-- Any member of that team
-- A superuser
-
-Deletion requires a POST request. A GET request only displays the confirmation page.
-
-Enforced in `delete_team`.
-
----
-
-### Team Membership Management
-
-**Adding users:**
-
-- Any team member or superuser can add users to the team.
-- Users cannot join a team themselves unless they are already members or superusers.
-
-**Removing users:**
-
-- Any team member or superuser can remove other users.
-- Users can remove themselves from a team.
-
-Membership changes through `enter_team` and `leave_team` require POST requests.
-
-Team members and superusers can also manage membership through `update_team`.
-
----
-
-### Security Trade-off
-
-Team membership grants access to private tasks assigned to that team. Members can also edit tasks assigned to their team.
-
-Because team members can add other users, they can extend access to these private tasks.
-
-This behavior is intentional for a **trusted, collaborative team model**.
-
-The application does not currently implement separate team owner or administrator roles. Therefore, every team member has permission to manage membership and delete the team.
-
-This design is suitable for a trusted collaborative environment, but it is not intended to enforce isolation between untrusted team members.
-
----
-
-## 5. User Permissions
-
-### View Profile
-
-- Any authenticated user can view any user profile.
-
----
-
-### Create User
-
-- Only a superuser can create a new user.
-
-Enforced in `create_user`.
-
----
-
-### Update Profile
-
-A profile can be updated if:
-
-- The logged-in user owns that profile
-- OR the user is a superuser
-
-Enforced in `update_user`.
-
----
-
-### Delete User
-
-A user account can be deleted if:
-
-- The logged-in user owns that profile
-- OR the user is a superuser
-
-Enforced in `delete_user`.
-
-Deletion removes the Django `User` instance.
-
+See [Testing](TESTING.md) and [Security](SECURITY.md).

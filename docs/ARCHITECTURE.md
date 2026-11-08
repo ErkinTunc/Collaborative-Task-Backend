@@ -1,83 +1,75 @@
 # Architecture
 
-## App Separation
+TeamForge is a small, server-rendered Django application. The goal was to keep the code straightforward while making permission checks hard to overlook.
 
-I split the project into two Django apps:
+## Request flow
 
-- `users/` → authentication (register, login, logout)
-- `tasks/` → core domain (Task, Team, UserProfile + views + permissions)
+```text
+Browser
+  -> task_manager/urls.py
+  -> tasks/urls.py or users/views.py
+  -> Django view + form validation
+  -> permission checks + Django ORM
+  -> SQLite
+  -> Django template / redirect
+```
 
-Reason: keep auth separated so the domain logic does not depend on authentication internals.
+The browser submits HTML forms; the application does not expose a JSON REST API. Bootstrap and a small CSS file handle the interface.
 
----
+## App layout
 
-## URL Routing
+| Location | Responsibility |
+| --- | --- |
+| `users/` | Registration and login views; registration form |
+| `tasks/models.py` | Task, Team, UserProfile and lifecycle signals |
+| `tasks/views.py` | Dashboard, profiles, teams, tasks and control panel |
+| `tasks/forms.py` | Task, team and profile forms, including allowed team selections |
+| `tasks/permissions.py` | Shared task visibility and edit checks |
+| `tasks/tests.py` | Automated authorization tests |
+| `task_manager/` | Settings and top-level URLs |
 
-Routing is explicit:
+An intentional historical detail: `UserProfile` lives in `tasks/models.py`, not in the `users` app. The app split is practical, not a claim that the domains are perfectly isolated.
 
-- `task_manager/urls.py` defines auth routes (`/register/`, `/login/`, `/logout/`)
-- all domain routes are delegated to the `tasks` app (`include("tasks.urls")`)
+## Data relationships
 
-Goal: every URL can be traced directly to a view with no hidden routing abstraction.
+- A task has one **creator** (`ForeignKey(User)`), distinct from the users assigned to it.
+- Users and teams can each be assigned to multiple tasks through many-to-many relations.
+- Teams contain multiple users; membership determines access to private tasks linked to the team.
+- A task can link to other tasks through a **directed** self-referencing many-to-many relation (`symmetrical=False`). This is a graph, not a guaranteed tree: multiple parents and cycles are not prevented by the model.
+- `UserProfile` adds a description and image to Django's built-in user account.
 
----
+See [Data Model](DATA_MODEL.md) for the fields and deletion behavior.
 
-## Data Modeling
+## Authorization: shared helpers, explicit views
 
-Core entities:
+Two helpers in `tasks/permissions.py` reduce duplication:
 
-- `Task`
-- `Team`
-- `UserProfile`
+- `visible_tasks_for(user)` returns public tasks and private tasks visible through creation, direct assignment, team membership, or superuser status.
+- `can_edit_task(user, task)` checks whether the user is the creator, an assigned user, a member of an assigned team, or a superuser.
 
-Modeling choices:
+Task detail, edit and delete handlers use these helpers. The **delete** rule is deliberately narrower than the edit rule: only the creator or superuser may delete a task. Team membership and profile ownership checks remain in their respective views.
 
-- Many-to-Many: `Task ↔ Users`
-- Many-to-Many: `Task ↔ Teams`
-- Self-referencing Many-to-Many for subtasks:
-  - `subtasks = ManyToMany('self', symmetrical=False)`
-  - allows directed task → subtask relationships
-- `creator` field on Task to enforce ownership rules
-- `UserProfile` extends Django `User` with a One-to-One relationship
+`TaskForm` also limits which teams a user can attach to a task. Existing team links are preserved as available choices on an edit even if the editor is not a member of those teams.
 
----
+For exact behavior, see [Permissions](PERMISSIONS.md).
 
-## Signals (Lifecycle Automation)
+## Why this structure?
 
-I use signals only for lifecycle consistency:
+There is no service layer or Django REST Framework. For this size of project, views, model forms and two permission helpers are enough. Adding extra layers now would mostly move the same logic into more files.
 
-1. Auto-create `UserProfile` when a Django `User` is created.
-2. Cleanup Many-to-Many relations when:
-   - a User is deleted
-   - a Team is deleted
-   - a Task is deleted
+The trade-off is that some views mix request handling and business rules. As workflows grow, those pieces may deserve dedicated services or more reusable policies.
 
-Reason: deletions can happen from views, admin, or Django shell — signals enforce cleanup regardless of entry point.
+## Signals and deletion behavior
 
----
+A `post_save` signal creates a profile when a user is created. There are also `post_delete` receivers calling `.clear()` on related many-to-many fields.
 
-## Authorization Strategy
+Django already cleans up many-to-many join records when referenced objects are deleted, so those `.clear()` handlers are mostly redundant rather than a separate integrity mechanism. More important: `Task.creator` has `on_delete=models.CASCADE`. **Deleting a user also deletes tasks they created**, not just their profile or assignments. This is an intentional consequence of the current schema and something to reconsider before handling real user data.
 
-Authorization is enforced directly in the views (`tasks/views.py`).
+## Static files, media and deployment
 
-Examples:
+- SQLite is configured in `task_manager/settings.py`.
+- WhiteNoise serves collected **static** assets; it does not by itself serve uploaded profile pictures.
+- Profile images use `MEDIA_ROOT = pictures/` and `MEDIA_URL = /pictures/`. Local media URLs work through Django's development routing when `DEBUG=True`; production media needs separate hosting configuration.
+- `DJANGO_SECRET_KEY` is required. `DJANGO_DEBUG=1` and `DJANGO_LOCAL_HTTP=1` are local-development options, not production settings.
 
-- Only superusers can access the admin control panel.
-- Only task creators (or superusers) can delete tasks.
-- Updating tasks requires collaboration rights.
-- Updating/deleting teams requires membership (or superuser).
-- Updating/deleting user profiles requires ownership (or superuser).
-
-Reason: in a server-rendered Django app, the view is the request boundary, so permission checks stay explicit and hard to bypass.
-
----
-
-## Why No Service Layer / Why No DRF 
-
-I kept the architecture minimal because:
-
-- it’s a single server-rendered interface
-- workflows are not complex enough to justify extra layers
-- adding a service layer or DRF would add indirection without strong payoff at this scope
-
-Trade-off: views are larger, but the code stays easy to audit.
+See [Security](SECURITY.md) for the risks and deployment checklist.

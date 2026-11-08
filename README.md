@@ -1,165 +1,152 @@
-# Collaborative Task Backend
+# TeamForge
 
-**Multi-User Collaborative Backend (Django)**
+**A collaborative task manager built with Django.**
 
-A backend-oriented system exploring object-level authorization, relational modeling, and multi-user domain design.
+Users can create tasks, assign them to people or teams, set deadlines, and track progress. Tasks can also be private, which makes permissions an important part of the project.
 
-This project focuses on reasoning about _who can see, modify, and delete what_ in a collaborative environment.
+For example, someone assigned to a task can update it, but cannot delete it unless they created it. A private task assigned to a team must be visible to that team's members without becoming visible to everyone else. These checks happen in the Django backend, not just in the interface.
 
----
+The repository includes **21 automated tests** focused on task and team permissions.
 
-## System Motivation
+[Hosted app](https://teamforge.alwaysdata.net/) · [Permission rules](docs/PERMISSIONS.md) · [Running the tests](#tests)
 
-Many collaborative systems appear simple at the interface level but become complex when enforcing:
+## Screenshots
 
-- Visibility rules
-- Ownership semantics
-- Multi-entity assignment
-- Hierarchical relationships
-- Consistent permission enforcement
+**Dashboard** — assigned tasks, teams, and public tasks in one place.
 
-This project models those challenges explicitly.
+![TeamForge dashboard](docs/images/dashboard.png)
 
-### Tech Stack
+**Control Panel** — an overview of users, teams, and tasks for administrators.
 
-| Layer | Technology |
-|-------|-----------|
-| Language | Python 3.x |
-| Framework | Django 5.x |
-| Database | SQLite (dev) / PostgreSQL (prod-ready) |
-| UI | Bootstrap (server-rendered templates) |
+![TeamForge admin control panel](docs/images/control-panel.png)
 
+<!--
+## Workflow demo
 
----
+![Create, assign, and update a task](docs/images/workflow.gif)
+-->
 
-## Core Technical Challenges
+## What it does
 
-- Designing object-level visibility rules across:
-  - Public tasks
-  - Direct user assignments
-  - Team-based propagation
-- Modeling directed subtask graphs using self-referencing relations
-- Separating authentication from business logic
-- Enforcing permissions without hidden abstractions
-- Maintaining relational integrity via lifecycle signals
+- Create tasks with descriptions, deadlines, and three statuses: To Do, In Progress, and Done.
+- Assign tasks to individual users or whole teams.
+- Choose whether a task is public or private.
+- Link subtasks to larger tasks.
+- Create teams and manage their members.
+- Register, sign in, and manage a profile.
+- Use the admin-only Control Panel to browse users, teams, and tasks.
 
-The emphasis is correctness and reasoning — not UI complexity.
+## Permissions
 
----
+A public task is visible to any signed-in user. Private tasks are restricted to the people involved.
 
-## Architectural Decisions
+| Action | Allowed users |
+| --- | --- |
+| View a private task | Creator, assigned user, member of an assigned team, or superuser |
+| Edit a task | Creator, assigned user, member of an assigned team, or superuser |
+| Delete a task | Creator or superuser |
+| Edit or delete a team | Member of that team or superuser |
 
-App Separation:
+One deliberate simplification is that **teams do not have separate owner and admin roles**. Any team member can manage membership or delete the team. That works for trusted groups, but it would need stricter roles in a larger application where team members should not have equal control.
+
+The [permission document](docs/PERMISSIONS.md) describes the remaining rules, including team invitations and leaving a team.
+
+## A few implementation choices
+
+- **Django views enforce access rules.** `tasks/permissions.py` contains shared checks for task visibility and editing; deletion and team-management checks are enforced at their request handlers.
+- **Relationships are modelled in the database.** Django's built-in `User` model connects to tasks and teams through foreign keys and many-to-many relationships.
+- **Subtasks use a directed self-referencing relationship.** A task can link to other tasks without adding a separate subtask model.
+- **The UI is server-rendered.** Django templates and Bootstrap were enough for this project; there is no REST API or frontend framework to maintain.
+
+The details and trade-offs are in [Architecture](docs/ARCHITECTURE.md) and [Data Model](docs/DATA_MODEL.md).
+
+## Tests
+
+There are **21 Django `TestCase` tests** in `tasks/tests.py`. They check cases such as assigning a team you do not belong to, preventing collaborators from deleting tasks, stopping outsiders from changing team membership, and requiring POST for destructive actions.
 
 ```bash
-users/ → Authentication & profile domain
-tasks/ → Business domain (Task, Team, permission logic)
+python manage.py test tasks -v 2
 ```
 
-Key decisions:
+These tests focus on authorization rather than covering every feature of the application. See [Testing](docs/TESTING.md) for the covered cases and remaining gaps.
 
-- View-level authorization (explicit request boundary control)
-- Directed self-referencing ManyToMany for task hierarchies
-- Explicit creator vs collaborator distinction
-- Minimal use of signals (only lifecycle consistency)
-- Server-rendered design (no DRF abstraction layer)
+## Tech stack
 
-Trade-offs are documented in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+| | |
+| --- | --- |
+| Backend | Python, Django 6.1.3 |
+| Database | SQLite |
+| UI | Django templates, Bootstrap |
+| Static files | WhiteNoise |
+| Tests | Django `TestCase` |
 
----
+## Run locally
 
-## Engineering Focus
-
-This project demonstrates:
-
-- Domain modeling with complex associations
-- Object-level access control
-- Directed graph modeling in relational databases
-- Explicit trade-off reasoning
-- Awareness of production concerns (security, scaling, testing)
-
-## Documentation
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [API Specification](docs/API.md)
-- [Data Model](docs/DATA_MODEL.md)
-- [Permission Model](docs/PERMISSIONS.md)
-- [Security Review](docs/SECURITY.md)
-- [Testing Strategy](docs/TESTING.md)
-- [Course Context](docs/COURSE_CONTEXT.md)
-
----
-
-## Running the Project Locally
-
-1. **Clone the project**
+**1. Clone the repository and install dependencies.**
 
 ```bash
 git clone https://github.com/ErkinTunc/Collaborative-Task-Backend.git
 cd Collaborative-Task-Backend
+python -m venv .venv
 ```
 
-2. **Create a virtual environment**
+Activate the environment:
 
-Each computer must have its own virtual environment (not shared via Git).
+```powershell
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+```
 
 ```bash
-python -m venv venv
+# macOS / Linux
+source .venv/bin/activate
 ```
 
-3. **Activate the virtual environment**
-
-```bash
-# UNIX
-source venv/bin/activate
-
-# Windows (PowerShell)
-.\venv\Scripts\Activate.ps1
-```
-
-4. **Install dependencies**
+Then install the requirements:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-5. **Configure SECRET_KEY**
+**2. Set the environment variables for local development.**
 
-Generate a local secret key (do not commit it to GitHub).
+PowerShell:
 
 ```powershell
-# Windows (PowerShell)
 $env:DJANGO_SECRET_KEY = python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+$env:DJANGO_DEBUG = "1"
+$env:DJANGO_LOCAL_HTTP = "1"
 ```
+
+macOS / Linux:
 
 ```bash
-# UNIX
 export DJANGO_SECRET_KEY="$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')"
+export DJANGO_DEBUG=1
+export DJANGO_LOCAL_HTTP=1
 ```
 
-6. **Initialize the database**
+**3. Start the app.**
 
 ```bash
 python manage.py migrate
-python manage.py createsuperuser
-```
-
-7. **Run the server**
-
-```bash
-python manage.py collectstatic --noinput
 python manage.py runserver
 ```
 
-Open http://127.0.0.1:8000/
+Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) and register an account.
 
+The repository includes a SQLite database with sample tasks and teams. It is for local demonstration, not production data. Do not use `DJANGO_DEBUG=1` or `DJANGO_LOCAL_HTTP=1` in production.
 
+## Documentation
 
----
+- [Architecture](docs/ARCHITECTURE.md)
+- [Data Model](docs/DATA_MODEL.md)
+- [Permissions](docs/PERMISSIONS.md)
+- [Security Review](docs/SECURITY.md)
+- [Testing](docs/TESTING.md)
+- [Course Context](docs/COURSE_CONTEXT.md)
 
-## Authors
+## Contributors
 
 - [Erkin Tunc BOYA](https://github.com/ErkinTunc)
 - [Mohamed SAIDANE](https://github.com/Tounes-3220)
-
-

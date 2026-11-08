@@ -1,141 +1,78 @@
-# Data Models (Entities)
+# Data Model
 
-This section describes the core entities of the system and the reasoning behind their relationships.
+TeamForge uses Django's built-in `User` plus three models defined in `tasks/models.py`: `Task`, `Team` and `UserProfile`.
 
----
+## Relationships at a glance
+
+```text
+User 1 ---- * Task         (Task.creator)
+User * ---- * Task         (Task.users: assigned people)
+Team * --- * Task         (Task.teams)
+User * ---- * Team         (Team.users: members)
+Task * --- * Task         (Task.subtasks: directed links)
+User 1 ---- 1 UserProfile  (UserProfile.user)
+```
+
+The creator and assigned users are deliberately separate relationships: being assigned to work on a task does not make someone its owner.
 
 ## Task
 
-```bash
-{
-  "private": boolean,
-  "creator": User,
+| Field | Django type | Notes |
+| --- | --- | --- |
+| `creator` | `ForeignKey(User)` | Required; deleting the creator deletes the task (`CASCADE`) |
+| `title` | `CharField(max_length=200)` | Required |
+| `status` | `CharField` | `todo` (default), `in_progress`, `done` |
+| `description` | `TextField(blank=True)` | Optional |
+| `private` | `BooleanField(default=False)` | Public unless explicitly made private |
+| `users` | `ManyToManyField(User)` | People assigned to the task |
+| `teams` | `ManyToManyField(Team, blank=True)` | Teams assigned to the task |
+| `subtasks` | `ManyToManyField('self', symmetrical=False, blank=True)` | Directed child-task links |
+| `deadline` | `DateTimeField(null=True, blank=True)` | Optional |
+| `created_at` | `DateTimeField(auto_now_add=True)` | Creation timestamp |
+| `updated_at` | `DateTimeField(auto_now=True)` | Last save timestamp |
 
-  "title": string,
-  "status": "todo" | "in_progress" | "done",
-  "description": string,
+### Why keep creator and assignees separate?
 
-  "users": [User],     // List of users assigned to this task
-  "teams": [Team],     // List of teams associated with this task
-  "subtasks": [Task],  // Child tasks (self-referencing relationship)
+An assignee can collaborate on a task. Its creator retains the ability to delete it. A superuser can do both. Using separate fields makes that distinction possible without inventing an owner role for every participant.
 
-  "created_at": Date,
-  "updated_at": Date,
-  "deadline": Date
-}
-```
+### What does a subtask link mean?
 
-### Modeling Decisions
+`parent.subtasks.add(child)` creates a one-way relation. It does not automatically copy the parent's privacy flag, members, team assignments or edit permissions to the child. Each task has its **own** access rules, and the task detail view only shows linked subtasks the viewer is allowed to see.
 
-#### 1. Creator vs Assigned Users
-
-The `creator` field is separated from the `users` many-to-many field.
-
-##### Reason
-
-- The creator represents ownership.
-- Assigned users represent collaboration.
-- Deletion permissions depend on ownership, not assignment.
-- A creator may not necessarily be the only collaborator.
-
-This separation enables explicit and fine-grained authorization logic.
-
----
-
-#### 2. Self-Referencing Many-to-Many (Subtasks)
-
-`subtasks` uses a directed self-referencing `ManyToMany` relationship.
-
-##### Reason
-
-- Allows hierarchical decomposition of work.
-- Supports flexible task structures.
-- Enables non-symmetrical parent → child relationships.
-
-This models a directed graph rather than a strict tree structure.
-
-No cycle detection is implemented; graph integrity is handled at the application level.
-
----
-
-#### 3. Teams and Visibility Propagation
-
-Tasks can be linked to teams.
-
-##### Reason
-
-- Teams act as permission groups.
-- If a user belongs to a team assigned to a task, they inherit visibility and modification rights.
-- Avoids duplicating user-task assignments for every team member.
-
-This design enables scalable and centralized collaboration management.
+The model does **not** enforce an acyclic tree. A task can have multiple parents, and no cycle prevention is implemented. Do not treat this as a validated project-planning hierarchy.
 
 ## Team
 
-```bash
-{
-  "name": string,
-  "users": [User]  // Members of the team
-}
-```
+| Field | Django type | Notes |
+| --- | --- | --- |
+| `name` | `CharField(max_length=100)` | Team name |
+| `users` | `ManyToManyField(User)` | Members |
 
-### Modeling Decision
+A team is both a collaboration group and an access group. Membership in a team assigned to a task allows that member to see and edit the task, including private tasks.
 
-Teams serve two roles:
+There is **no team owner field**. All members can manage membership and delete the team under the current permission policy. A team's creator is simply added as one of its members.
 
-1. Organizational grouping
-2. Permission propagation unit
+## User and UserProfile
 
-Tasks reference teams rather than duplicating individual team members.
+Django's default `User` stores identity and authentication data. TeamForge has not replaced it with a custom user model.
 
-#### Reason
+| `UserProfile` field | Django type | Notes |
+| --- | --- | --- |
+| `user` | `OneToOneField(User)` | Profile is removed when user is deleted (`CASCADE`) |
+| `description` | `TextField(blank=True)` | Optional biography |
+| `image` | `ImageField` | Default `profile_pictures/placeholder.png` |
 
-- Centralizes permission logic at the team level.
-- Prevents redundant user-task assignments.
-- Ensures that changes in team membership automatically affect task visibility.
-- Maintains consistency between collaboration structure and access control.
+A `post_save` signal creates a `UserProfile` when a `User` is first created.
 
-## User
+The image field stores a **relative file path**, not the image bytes in SQLite. Files live under `pictures/profile_pictures/` (`MEDIA_ROOT` + `upload_to`). `.png`, `.webp` and other accepted image formats are possible; it is not PNG-only.
 
-```bash
+## Deletion and data integrity
 
-{
-  "id": int,
-  "username": string,
-  "email": string,
-  "password": string
-}
-```
+- Deleting a **user** deletes their profile and tasks they created because of `CASCADE`. Their many-to-many memberships/assignments are also removed.
+- Deleting a **team** removes its task links but does not delete the linked tasks.
+- Deleting a **task** removes its assignment and subtask relations. It does not automatically delete its linked child tasks.
+- The model defines `post_delete` handlers that clear related many-to-many fields, although Django already cleans up these join rows during deletion.
 
-### Modeling Decision
+This matters when deciding whether a collaboration app should preserve tasks after someone closes their account. The current model does **not** preserve tasks owned by a deleted user.
 
-The built-in Django `User` model is used.
-
-#### Reason
-
-- Avoids reimplementing authentication logic.
-- Leverages Django’s built-in password hashing and validation system.
-- Maintains full compatibility with Django’s authentication framework.
-
-## UserProfile
-
-```bash
-{
-  "user": User,        // One-to-one relationship with User
-  "description": string,
-  "image": *.png       // Stored in the "pictures/profile_pictures" directory
-}
-```
-
-### Modeling Decision
-
-`UserProfile` extends Django’s built-in `User` model using a `OneToOneField`.
-
-#### Reason
-
-- Keeps authentication logic separate from profile-related data.
-- Avoids modifying Django’s core `User` model.
-- Allows additional fields (e.g., `description`, `image`) without implementing a custom user model.
-- Maintains compatibility with Django’s built-in authentication system.
-
-The `UserProfile` instance is automatically created via a Django signal when a new `User` is created.
+See [Permissions](PERMISSIONS.md) for the rules applied before these operations.

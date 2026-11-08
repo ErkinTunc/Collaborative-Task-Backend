@@ -1,100 +1,60 @@
-# Testing Strategy
+# Testing
 
-At this stage, validation has been performed manually on the running application (development server).
+TeamForge currently defines **21 automated Django tests** in `tasks/tests.py`. They are written with `django.test.TestCase` and focus on authorization: users should not gain access simply by changing a submitted ID or URL.
 
-Authentication flows, visibility rules, permission checks, and deletion behavior were tested using different user roles (creator, collaborator, team member, outsider, superuser).
+This is not full application coverage. The list below distinguishes what is already tested from what is still worth testing.
 
-The core complexity of this system lies in enforcing correct visibility and object-level authorization.
+## Run the tests
 
-The goal of testing is to ensure:
+Install dependencies and set a local `DJANGO_SECRET_KEY` as described in the [README](../README.md). Then run:
 
-- access rules cannot be bypassed,
-- private data is not exposed,
-- relational integrity is preserved after deletions.
+```bash
+python manage.py test tasks -v 2
+```
 
-The sections below outline the intended automated testing strategy.
----
+Django creates and destroys a separate test database. The tests do not need the seeded demo accounts.
 
-## 1. What Should Be Tested
+For a basic configuration check:
 
-### 1.1 Authentication Gate
+```bash
+python manage.py check
+```
 
-**Goal:** Anonymous users must not access protected pages.
+## What is covered now
 
-Test cases:
-- Unauthenticated request to `/` redirects to `/login/`
-- Unauthenticated request to `/tasks/:id/` redirects to `/login/`
-- Unauthenticated request to `/teams/:id/` redirects to `/login/`
+| Test class | Count | Scenarios |
+| --- | ---: | --- |
+| `TaskTeamAuthorizationTests` | 3 | Reject foreign-team assignments on create/update; preserve existing team links on edit |
+| `TaskDeletionPermissionTests` | 5 | Outsiders and collaborators cannot delete; private task is hidden from outsider on delete route; creator deletes via POST; missing task returns 404 |
+| `TeamUpdatePermissionTests` | 3 | Outsider blocked; member allowed; missing team returns 404 |
+| `TeamDeletionPermissionTests` | 4 | Outsider blocked; member can delete only via POST; superuser allowed; missing team returns 404 |
+| `TeamMembershipPermissionTests` | 6 | Outsiders cannot join/remove members; members can add/remove; self-leave works; GET cannot change membership; missing target profile returns 404 |
+| **Total** | **21** | |
 
-Why it matters:
-- prevents unintended public exposure.
+These tests use Django's test client and test users, including creators, assigned users, team members, outsiders and superusers as applicable.
 
----
+A particularly useful example is the team-assignment form test: an outsider cannot submit the ID of an unrelated team to attach it to their task. The corresponding update test also checks that a pre-existing team link survives editing.
 
-### 1.2 Task Visibility Rules
+## What is not yet covered well
 
-**Goal:** Users should only see tasks they are allowed to see.
+The following should be treated as **future test cases**, not existing automated coverage:
 
-Test cases:
-- Public task visible to all authenticated users
-- Private task visible to:
-  - creator
-  - assigned users
-  - members of assigned teams
-  - superuser
-- Private task NOT visible to unrelated users
+- A complete visibility matrix for public/private tasks on dashboards, detail pages, profiles, team pages and linked subtasks.
+- Task update permissions for each role (creator, assignee, team member, outsider, superuser), including both GET and POST.
+- Subtask creation and its permission checks, including cycles and multiple-parent edge cases.
+- Profile update/deletion permissions, missing-profile behavior and image upload validation.
+- Registration, login, logout and CSRF rejection cases.
+- Deletion side effects: creator removal cascading to their tasks, and cleanup of team/task relations.
+- Upload handling, deployment configuration and any concurrency/performance claims.
 
-Why it matters:
-- this is the main privacy guarantee of the system.
+The existing permission helpers provide a good starting point for these tests; see [Permissions](PERMISSIONS.md).
 
----
+## Practical manual checks
 
-### 1.3 Object-Level Authorization (Update/Delete)
+For a quick demonstration, sign in as two different normal users and compare which private tasks they can see. Confirm that a collaborator can open the edit form but not delete someone else's task. Try changing team membership as a member and as an outsider. Verify a superuser can access the control panel.
 
-**Goal:** Users cannot modify or delete objects they do not have rights to.
+These manual checks are useful for UI behavior, but should not be reported as automated test coverage.
 
-Task tests:
-- Only creator (or superuser) can delete a task
-- Only collaborator (creator / assigned / team-member / superuser) can update a task
+## Scope and next step
 
-Team tests:
-- Only team members (or superuser) can update/delete a team
-
-User profile tests:
-- Only profile owner (or superuser) can update/delete a profile
-
-Why it matters:
-- prevents horizontal privilege escalation.
-
----
-
-### 1.4 Subtask Linking Integrity
-
-**Goal:** Only authorized users can create subtasks under a task.
-
-Test cases:
-- Authorized collaborator can create subtask via `/tasks/:id/add-sub-task`
-- Unauthorized user receives rejection (no creation)
-
-Why it matters:
-- subtasks inherit the parent task’s permission surface.
-
----
-
-### 1.5 Signals / Cleanup on Deletion
-
-**Goal:** Deleting an entity clears many-to-many relations to prevent dangling relations.
-
-Test cases:
-- Deleting a user clears user↔tasks and user↔teams relationships
-- Deleting a team clears team↔tasks relationships
-- Deleting a task clears task↔users and task↔teams relationships
-
-Why it matters:
-- ensures consistent database state even if deletion occurs from admin panel or shell.
-
-## 4. Current Status
-
-At the moment, automated tests are not implemented.
-
-However, the system’s architecture and documentation are designed to make permission rules explicit and testable, and the test plan above outlines the intended validation strategy.
+The current suite gives concrete evidence for several permission boundaries, not a guarantee that every security issue has been found. The next useful improvement is a test matrix for task visibility and edit rights; it is more valuable here than introducing a new testing framework.
