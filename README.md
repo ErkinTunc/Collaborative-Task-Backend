@@ -95,15 +95,15 @@ This project demonstrates:
 1. **Clone the project**
 
 ```bash
-git clone <repo-url>
-cd App-Web-Gestion-De-taches
+git clone https://github.com/ErkinTunc/Collaborative-Task-Backend.git
+cd Collaborative-Task-Backend
 ```
 
-1. **Create a virtual environment**  
-   Each computer must have its own virtual environment (not shared via Git).
+2. **Create a virtual environment**
+
+Each computer must have its own virtual environment (not shared via Git).
 
 ```bash
-Remove-Item -Recurse -Force .\venv
 python -m venv venv
 ```
 
@@ -114,24 +114,46 @@ python -m venv venv
 source venv/bin/activate
 
 # Windows (PowerShell)
-.\venv\bin\Activate.ps1
+.\venv\Scripts\Activate.ps1
 ```
 
 4. **Install dependencies**
 
 ```bash
-# Install Django
-python -m pip install Django
-
-# Install dependencies (for image handling)
-pip install Pillow
+pip install -r requirements.txt
 ```
 
-5. **Run the server**
+5. **Configure SECRET_KEY**
+
+Generate a local secret key (do not commit it to GitHub).
+
+```powershell
+# Windows (PowerShell)
+$env:DJANGO_SECRET_KEY = python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
 
 ```bash
+# UNIX
+export DJANGO_SECRET_KEY="$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')"
+```
+
+6. **Initialize the database**
+
+```bash
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+7. **Run the server**
+
+```bash
+python manage.py collectstatic --noinput
 python manage.py runserver
 ```
+
+Open http://127.0.0.1:8000/
+
+
 
 ---
 
