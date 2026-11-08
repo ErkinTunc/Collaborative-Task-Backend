@@ -145,11 +145,19 @@ def create_user(request):
 def create_team(request):
     form = TeamForm(request.POST or None)
 
-    if form.is_valid():
-        form.save()
+    if request.method == "POST" and form.is_valid():
+        team = form.save()
+
+        # The creator automatically becomes a team member.
+        team.users.add(request.user)
+
         return redirect("task:index")
 
-    return render(request, "teams/team-form.html", {"form": form})
+    return render(
+        request,
+        "teams/team-form.html",
+        {"form": form}
+    )
 
 @login_required
 def create_task(request):
@@ -195,31 +203,34 @@ def create_sub_task(request,task_id):
     return render(request, "tasks/task-form.html", {"form": form})
 
 @login_required
-def create_sub_team(request,task_id):
-    
-    task = Task.objects.get(id=task_id)
-    # Cheking autorization
-    in_any_team = False #checks if any user is in one of the teams assaigned on to the task
-    for team in task.teams.all():
-        if request.user in team.users.all():
-            in_any_team = True
+def create_sub_team(request, task_id):
+    task = get_object_or_404(
+        visible_tasks_for(request.user),
+        pk=task_id
+    )
 
-    if (not in_any_team) and (request.user != task.creator) and (request.user  not in task.users.all()) and not request.user.is_superuser: # you shall not pass (unless y are superuser or in the team)
-        return HttpResponse("You are not authorized to create an sub-task for this task")
+    if not can_edit_task(request.user, task):
+        raise PermissionDenied
 
-    # Creation of sub-task , (we can not use the create_task function because if we do we can not link task and sub-task)
     form = TeamForm(request.POST or None)
 
-    if form.is_valid():
-        sub_team = form.save(commit=False)
-         
-        sub_team.save()
-        task.teams.add(sub_team) # first save team to server then add in to the task
-        
-        form.save_m2m()
+    if request.method == "POST" and form.is_valid():
+        sub_team = form.save()
+
+        # Automatically include the creator.
+        sub_team.users.add(request.user)
+
+        # Associate the new team with the parent task.
+        task.teams.add(sub_team)
+
         return redirect("task:index")
 
-    return render(request, "teams/team-form.html", {"form": form})
+    return render(
+        request,
+        "teams/team-form.html",
+        {"form": form}
+    )
+
     
     
 
