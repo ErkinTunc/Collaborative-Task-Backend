@@ -11,24 +11,24 @@
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="{% static 'tasks/favicon/apple-touch-icon.png' %}"
+      href="{% static 'tasks/favicon/apple-touch-icon.png' %}?v=2"
     />
     <link
       rel="icon"
       type="image/x-icon"
-      href="{% static 'tasks/favicon/favicon.ico' %}"
+      href="{% static 'tasks/favicon/favicon.ico' %}?v=2"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="{% static 'tasks/favicon/favicon-32x32.png' %}"
+      href="{% static 'tasks/favicon/favicon-32x32.png' %}?v=2"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="{% static 'tasks/favicon/favicon-16x16.png' %}"
+      href="{% static 'tasks/favicon/favicon-16x16.png' %}?v=2"
     />
 
     <!-- Google Font -->
@@ -56,13 +56,13 @@
     <link rel="stylesheet" href="{% static 'tasks/styles.css' %}" />
 
     <!-- Site Information -->
-    <title>TaskManager</title>
+    <title>TeamForge</title>
   </head>
 
   <body class="d-flex flex-column min-vh-100">
     <header>
       <nav class="navbar navbar-dark bg-dark">
-        <a href="/" class="navbar-brand ms-3">TaskManager</a>
+        <a href="/" class="navbar-brand ms-3">TeamForge</a>
 
         <div class="navbar-nav flex-row ms-auto me-3">
           {% if user.is_authenticated %}<!-- if you try to use get for Logout it will cause security problems sooo use Form instead of <a> -->

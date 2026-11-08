@@ -85,7 +85,7 @@ These tests focus on authorization rather than covering every feature of the app
 **1. Clone the repository and install dependencies.**
 
 ```bash
-git clone https://github.com/ErkinTunc/Collaborative-Task-Backend.git
+git clone https://github.com/ErkinTunc/TeamForge
 cd Collaborative-Task-Backend
 python -m venv .venv
 ```
