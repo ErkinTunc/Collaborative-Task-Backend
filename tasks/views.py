@@ -10,6 +10,9 @@ from .forms import CustomUserForm, TeamForm,TaskForm, UserUpdateForm, UserProfil
 # Create your views here.
 from django.http import HttpResponse
 
+from django.core.exceptions import PermissionDenied
+from django.views.decorators.http import require_POST
+
 from .permissions import visible_tasks_for, can_edit_task
 from django.db.models import Q
 
@@ -329,41 +332,46 @@ def delete_task(request, id):
 
 # ================= Enter ==========================
 @login_required
+@require_POST
 def enter_team(request, team_id, user_id):
-    
-    user_profile = get_object_or_404(UserProfile, id=user_id)
-    user = user_profile.user
-    
-    team = get_object_or_404(Team, id=team_id)
-    
-    if request.method == 'POST': # Django doesnt support PATCH --> use POST instead
-        team.users.add(user) # added user to the team
-        team.save()
-        return redirect('task:detail_team', team_id=team.id) 
-    
-    # for GET
-    return redirect('task:detail_team', team_id=team.id)
+    team = get_object_or_404(Team, pk=team_id)
+    profile = get_object_or_404(UserProfile, pk=user_id)
+
+    # Only team members or superusers can add users.
+    if not (
+        request.user.is_superuser
+        or team.users.filter(pk=request.user.pk).exists()
+    ):
+        raise PermissionDenied
+
+    team.users.add(profile.user)
+
+    return redirect("task:detail_team", team_id=team.pk)
+
     
 # ================= Leave ==========================
 
 @login_required
+@require_POST
 def leave_team(request, team_id, user_id):
-    
-    user_profile = get_object_or_404(UserProfile, id=user_id)
-    user = user_profile.user
-    team = Team.objects.get(id=team_id)
-    
-    if request.method == 'POST':
-        
-        try:
-            team.users.remove(user) # added user to the team
-        except ValueError:
-            print("There is a problem while leaving from team with <" + team_id + "> team id")
-        team.save()
-        return redirect('task:detail_team', team_id=team.id)
-    
-    # for GET
-    return redirect('task:detail_team', team_id=team.id)
+    team = get_object_or_404(Team, pk=team_id)
+    profile = get_object_or_404(UserProfile, pk=user_id)
+
+    target_user = profile.user
+
+    # Users can leave themselves.
+    # Team members and superusers can remove other users.
+    if not (
+        request.user == target_user
+        or request.user.is_superuser
+        or team.users.filter(pk=request.user.pk).exists()
+    ):
+        raise PermissionDenied
+
+    team.users.remove(target_user)
+
+    return redirect("task:detail_team", team_id=team.pk)
+
 
 # ================= HELLO WORLD ==========================
 
