@@ -27,6 +27,12 @@ SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
+# Secure cookies by default; allow local HTTP development.
+LOCAL_HTTP = os.environ.get("DJANGO_LOCAL_HTTP") == "1"
+
+SESSION_COOKIE_SECURE = not LOCAL_HTTP
+CSRF_COOKIE_SECURE = not LOCAL_HTTP
+
 ALLOWED_HOSTS = [
     "teamforge.alwaysdata.net",
     "127.0.0.1",
