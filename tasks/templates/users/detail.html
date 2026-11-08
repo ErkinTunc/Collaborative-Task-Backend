@@ -57,7 +57,7 @@
             <h2 class="h5 mb-3">Assigned Tasks</h2>
 
             <div class="list-group">
-              {% for task in profile.user.tasks.all %}
+              {% for task in visible_tasks %}
               <div
                 class="list-group-item d-flex justify-content-between align-items-center gap-2"
               >

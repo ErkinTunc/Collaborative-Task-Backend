@@ -26,7 +26,7 @@
     <section>
       <h3>Tasks Assigned to This Team:</h3>
       <ul class="list-group">
-        {% for task in team.tasks.all %}
+        {% for task in visible_tasks %}
         <a
           href="{% url 'task:detail_task' task.id %}"
           class="btn btn-outline-primary me-2 mb-2"

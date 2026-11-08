@@ -98,7 +98,7 @@
             <h2 class="h5 mb-3">Subtasks</h2>
 
             <div class="list-group">
-              {% for subtask in task.subtasks.all %}
+              {% for subtask in visible_subtasks %}
 
               <a
                 href="{% url 'task:detail_task' subtask.id %}"
@@ -146,7 +146,10 @@
           <hr />
 
           <!-- Actions -->
+
           <div class="d-flex flex-wrap gap-2 mt-4">
+            {% if can_edit %}
+            <!-- Existing Edit Task button -->
             <a
               href="{% url 'task:update_task' task.id %}"
               class="btn btn-primary"
@@ -154,6 +157,7 @@
               Edit Task
             </a>
 
+            <!-- Existing Add Subtask button -->
             <a
               href="{% url 'task:create_sub_task' task.id %}"
               class="btn btn-outline-primary"
@@ -161,13 +165,16 @@
               + Add Subtask
             </a>
 
+            <!-- Existing Add Team button -->
             <a
               href="{% url 'task:create_sub_team' task.id %}"
               class="btn btn-outline-secondary"
             >
               + Add Team
             </a>
+            {% endif %}
 
+            <!-- Delete Task -->
             {% if request.user == task.creator or request.user.is_superuser %}
             <a
               href="{% url 'task:delete_task' task.id %}"
@@ -177,6 +184,8 @@
             </a>
             {% endif %}
           </div>
+          
+
         </div>
       </div>
     </div>

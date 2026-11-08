@@ -10,6 +10,9 @@ from .forms import CustomUserForm, TeamForm,TaskForm, UserUpdateForm, UserProfil
 # Create your views here.
 from django.http import HttpResponse
 
+from .permissions import visible_tasks_for, can_edit_task
+from django.db.models import Q
+
 # ================= ADMIN-INDEX // CONTROL-PANEL =====================
 
 @login_required
@@ -43,64 +46,82 @@ def admin_index(request):
 
 # ================= INDEX =====================
 
+
 @login_required
 def index(request):
-    task_list = Task.objects.all()
-    team_list = Team.objects.all()
-    
     current_user = request.user
-    
-    public_task_lists = []
-    
+
+    # Tasks created by, assigned to, or shared
+    # through teams with the current user.
+    users_task_list = Task.objects.filter(
+        Q(creator=current_user)
+        | Q(users=current_user)
+        | Q(teams__users=current_user)
+    ).distinct()
+
+    # Public tasks are visible to all authenticated users.
+    public_task_list = Task.objects.filter(private=False)
+
+    # Teams the current user belongs to.
     users_team = current_user.teams.all()
-    users_task_set = set(current_user.tasks.all()) # set prevents duplication
 
-
-    for team in current_user.teams.all():
-        for task in team.tasks.all():
-            users_task_set.add(task)
-
-    
-    # public list of tasks
-    for task in task_list:
-        if task.private == False :
-            public_task_lists.append(task)
-    
-    
     context = {
-        "current_user":current_user,
-        "public_task_list":public_task_lists,
-        "users_task_list":list(users_task_set),  # convert set to list
-        "users_team":users_team
+        "current_user": current_user,
+        "public_task_list": public_task_list,
+        "users_task_list": users_task_list,
+        "users_team": users_team,
     }
-    return render(request,"index.html",context)
+
+    return render(request, "index.html", context)
+
 
 # ======================= DETAILS =====================
 # leads us to details.html pages
 
 @login_required
-def detail_task(request,task_id):
-    task = Task.objects.get(pk=task_id)
+def detail_task(request, task_id):
+    task = get_object_or_404(
+        visible_tasks_for(request.user),
+        pk=task_id
+    )
+
     context = {
-        "task":task,
+        "task": task,
+        "visible_subtasks": task.subtasks.filter(
+            pk__in=visible_tasks_for(request.user).values("pk")
+        ),
+        "can_edit": can_edit_task(request.user, task),
     }
-    return render(request,"tasks/detail.html",context)
+
+    return render(request, "tasks/detail.html", context)
 
 @login_required
-def detail_team(request,team_id):
-    team = Team.objects.get(pk=team_id)
-    context = {
-        "team":team,
-    }
-    return render(request,"teams/detail.html",context)
+def detail_team(request, team_id):
+    team = get_object_or_404(Team, pk=team_id)
+
+    visible_tasks = visible_tasks_for(request.user).filter(
+        teams=team
+    )
+
+    return render(request, "teams/detail.html", {
+        "team": team,
+        "visible_tasks": visible_tasks,
+    })
+
 
 @login_required
 def detail_user(request, user_id):
-    profile = UserProfile.objects.get(pk=user_id)
-    context = {
-        "profile": profile, 
-    }
-    return render(request, "users/detail.html", context)
+    profile = get_object_or_404(UserProfile, pk=user_id)
+
+    visible_tasks = visible_tasks_for(request.user).filter(
+        users=profile.user
+    )
+
+    return render(request, "users/detail.html", {
+        "profile": profile,
+        "visible_tasks": visible_tasks,
+    })
+
 
 
 # =================== CREATE ====================
