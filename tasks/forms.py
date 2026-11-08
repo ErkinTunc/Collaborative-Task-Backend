@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.forms.widgets import DateTimeInput
 
+from django.db.models import Q
+
 # For creating users (it is not login)
 class CustomUserForm(UserCreationForm): # this will ask user 2 times its password and hash it
     class Meta:
@@ -63,6 +65,20 @@ class TaskForm(forms.ModelForm):
         widget=forms.CheckboxSelectMultiple,
         required=False
     )
+
+    def __init__(self, *args, user, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if user.is_superuser:
+            allowed_teams = Team.objects.all()
+        elif self.instance.pk:
+            allowed_teams = Team.objects.filter(
+                Q(users=user) | Q(tasks=self.instance)
+            ).distinct()
+        else:
+            allowed_teams = Team.objects.filter(users=user)
+
+        self.fields["teams"].queryset = allowed_teams
 
     class Meta:
         model = Task

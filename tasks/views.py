@@ -161,7 +161,7 @@ def create_team(request):
 
 @login_required
 def create_task(request):
-    form = TaskForm(request.POST or None)
+    form = TaskForm(request.POST or None, user=request.user)
 
     if form.is_valid():
         task = form.save(commit=False) # Create task instance, but not saved yet
@@ -183,7 +183,7 @@ def create_sub_task(request, task_id):
     if not can_edit_task(request.user, task):
         raise PermissionDenied
 
-    form = TaskForm(request.POST or None)
+    form = TaskForm(request.POST or None, user=request.user)
 
     if request.method == "POST" and form.is_valid():
         sub_task = form.save(commit=False)
@@ -286,7 +286,11 @@ def update_task(request, id):
     if not can_edit_task(request.user, task):
         raise PermissionDenied
     
-    form = TaskForm(request.POST or None, instance=task)
+    form = TaskForm(
+        request.POST or None,
+        instance=task,
+        user=request.user
+    )
 
     if request.method == "POST" and form.is_valid():
         form.save()
