@@ -205,6 +205,31 @@ main {
   gap: 8px;
 }
 
+/* ========== Dashbords ================ */
+
+/* Keep dashboard cards compact and each list independently scrollable. */
+/* My Tasks fills the left column */
+.dashboard .my-tasks-card {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 992px) {
+  .dashboard .my-tasks-card > .list-group {
+    height: 0;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
+/* Keep normal scrolling on mobile */
+@media (max-width: 991.98px) {
+  .dashboard .my-tasks-card {
+    height: auto !important;
+  }
+}
+
 /* ===== Footer ===== */
 
 footer {
