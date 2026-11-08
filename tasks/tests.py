@@ -315,3 +315,116 @@ class TeamDeletionPermissionTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+# ------------- Regresion Tests --------------------
+
+
+class TeamMembershipPermissionTests(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.member = User.objects.create_user(username="member")
+        cls.outsider = User.objects.create_user(username="outsider")
+
+        cls.team = Team.objects.create(name="Test Team")
+        cls.team.users.add(cls.member)
+
+    def test_outsider_cannot_join_team(self):
+        self.client.force_login(self.outsider)
+
+        response = self.client.post(
+            reverse(
+                "task:enter_team",
+                args=[self.team.pk, self.outsider.userprofile.pk]
+            )
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            self.team.users.filter(pk=self.outsider.pk).exists()
+        )
+
+    def test_outsider_cannot_remove_member(self):
+        self.client.force_login(self.outsider)
+
+        response = self.client.post(
+            reverse(
+                "task:leave_team",
+                args=[self.team.pk, self.member.userprofile.pk]
+            )
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(
+            self.team.users.filter(pk=self.member.pk).exists()
+        )
+
+    def test_member_can_add_and_remove_user(self):
+        self.client.force_login(self.member)
+
+        enter_url = reverse(
+            "task:enter_team",
+            args=[self.team.pk, self.outsider.userprofile.pk]
+        )
+
+        response = self.client.post(enter_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            self.team.users.filter(pk=self.outsider.pk).exists()
+        )
+
+        leave_url = reverse(
+            "task:leave_team",
+            args=[self.team.pk, self.outsider.userprofile.pk]
+        )
+
+        response = self.client.post(leave_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            self.team.users.filter(pk=self.outsider.pk).exists()
+        )
+
+    def test_member_can_leave_own_team(self):
+        self.client.force_login(self.member)
+
+        response = self.client.post(
+            reverse(
+                "task:leave_team",
+                args=[self.team.pk, self.member.userprofile.pk]
+            )
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            self.team.users.filter(pk=self.member.pk).exists()
+        )
+
+    def test_membership_changes_reject_get(self):
+        self.client.force_login(self.member)
+
+        enter_url = reverse(
+            "task:enter_team",
+            args=[self.team.pk, self.outsider.userprofile.pk]
+        )
+
+        leave_url = reverse(
+            "task:leave_team",
+            args=[self.team.pk, self.member.userprofile.pk]
+        )
+
+        self.assertEqual(self.client.get(enter_url).status_code, 405)
+        self.assertEqual(self.client.get(leave_url).status_code, 405)
+
+    def test_missing_profile_returns_404(self):
+        self.client.force_login(self.member)
+
+        response = self.client.post(
+            reverse(
+                "task:enter_team",
+                args=[self.team.pk, 999999]
+            )
+        )
+
+        self.assertEqual(response.status_code, 404)
