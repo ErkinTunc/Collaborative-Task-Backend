@@ -86,7 +86,7 @@ These tests focus on authorization rather than covering every feature of the app
 
 ```bash
 git clone https://github.com/ErkinTunc/TeamForge
-cd Collaborative-Task-Backend
+cd TeamForge
 python -m venv .venv
 ```
 
